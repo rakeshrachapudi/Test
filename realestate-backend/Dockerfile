@@ -3,19 +3,16 @@
 # =========================================
 FROM maven:3.8.5-openjdk-17 AS build
 
-# Set the working directory inside the container
+# Set working directory
 WORKDIR /app
 
-# Copy only the necessary files for dependency resolution
-COPY backend/pom.xml .
+# Copy pom.xml first (to leverage Docker cache for dependencies)
+COPY pom.xml .
 
-# Download dependencies first (leverages Docker caching)
-RUN mvn dependency:go-offline
+# Copy the source code
+COPY src ./src
 
-# Copy the actual project source
-COPY backend/src ./src
-
-# Build the application (skip tests for faster build)
+# Build the JAR (skip tests to speed up build)
 RUN mvn clean package -DskipTests
 
 # =========================================
@@ -23,15 +20,14 @@ RUN mvn clean package -DskipTests
 # =========================================
 FROM openjdk:17-slim
 
-# Set the working directory inside the container
+# Set working directory
 WORKDIR /app
 
-# Copy the generated JAR from the build stage
+# Copy the JAR from the build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Expose the port your Spring Boot app listens on
+# Expose the port your Spring Boot app runs on
 EXPOSE 8080
 
-# Define the command to run the application
+# Run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
-
